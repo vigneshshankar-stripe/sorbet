@@ -264,6 +264,7 @@ NameDef names[] = {
     {"buildArray", "<build-array>"},
     {"splat", "<splat>"},
     {"expandSplat", "<expand-splat>"},
+    {"suggestType", "<suggest-type>"},
     {"arg0"},
     {"arg1"},
     {"arg2"},

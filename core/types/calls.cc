@@ -1566,6 +1566,25 @@ public:
     }
 } Magic_callWithSplatAndBlock;
 
+class Magic_suggestType : public IntrinsicMethod {
+public:
+    void apply(Context ctx, DispatchArgs args, const Type *thisType, DispatchResult &res) const override {
+        if (args.args.size() != 1) {
+            return;
+        }
+        auto ty = args.args.front()->type;
+        auto loc = args.locs.args[0];
+        if (!ty->isUntyped()) {
+            if (auto e = ctx.state.beginError(loc, core::errors::Infer::SuggestType)) {
+                e.setHeader("Suggested type: `{}`", ty->show(ctx));
+                e.addAutocorrect(
+                    core::AutocorrectSuggestion{loc, fmt::format("T.let({}, {})", loc.source(ctx), ty->show(ctx))});
+            }
+        }
+        res.returnType = move(ty);
+    }
+} Magic_suggestType;
+
 class DeclBuilderForProcs_void : public IntrinsicMethod {
 public:
     void apply(Context ctx, DispatchArgs args, const Type *thisType, DispatchResult &res) const override {
@@ -1935,6 +1954,7 @@ const vector<Intrinsic> intrinsicMethods{
     {Symbols::MagicSingleton(), false, Names::callWithSplat(), &Magic_callWithSplat},
     {Symbols::MagicSingleton(), false, Names::callWithBlock(), &Magic_callWithBlock},
     {Symbols::MagicSingleton(), false, Names::callWithSplatAndBlock(), &Magic_callWithSplatAndBlock},
+    {Symbols::MagicSingleton(), false, Names::suggestType(), &Magic_suggestType},
 
     {Symbols::DeclBuilderForProcsSingleton(), false, Names::void_(), &DeclBuilderForProcs_void},
     {Symbols::DeclBuilderForProcsSingleton(), false, Names::returns(), &DeclBuilderForProcs_returns},
