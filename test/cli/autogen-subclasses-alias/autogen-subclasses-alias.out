@@ -1,0 +1,4 @@
+--- autogen-subclasses-alias ---
+Opus::Mixin
+ Opus::Mixed
+ Opus::MixedDescendant
