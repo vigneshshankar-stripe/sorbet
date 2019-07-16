@@ -660,6 +660,18 @@ public:
         return asgn;
     }
 
+    // Utility function that checks for duplicate named arguments.
+    void checkDuplicateNamedArg(const core::Context ctx, std::optional<core::Loc> &prevLoc, const core::Loc &loc, string_view variety) {
+        if (prevLoc.has_value()) {
+            if (auto e = ctx.state.beginError(loc, core::errors::Namer::InvalidTypeDefinition)) {
+                e.setHeader("Duplicate use of `{}`", variety);
+                e.addErrorLine(*prevLoc, "First occurrence of `{}`", variety);
+            }
+        } else {
+            prevLoc = make_optional<core::Loc>(loc);
+        }
+    }
+
     unique_ptr<ast::Expression> handleTypeMemberDefinition(core::MutableContext ctx, const ast::Send *send,
                                                            unique_ptr<ast::Assign> asgn,
                                                            const ast::UnresolvedConstantLit *typeName) {
@@ -756,6 +768,10 @@ public:
             auto *hash = ast::cast_tree<ast::Hash>(send->args.back().get());
             if (hash) {
                 int i = -1;
+                optional<core::Loc> fixedLoc = nullopt;
+                optional<core::Loc> lowerLoc = nullopt;
+                optional<core::Loc> upperLoc = nullopt;
+
                 for (auto &keyExpr : hash->keys) {
                     i++;
                     auto key = ast::cast_tree<ast::Literal>(keyExpr.get());
@@ -763,19 +779,17 @@ public:
                     if (key != nullptr && key->isSymbol(ctx)) {
                         switch (key->asSymbol(ctx)._id) {
                             case core::Names::fixed()._id:
-                                // Leave it in the tree for the resolver to chew on.
+                                checkDuplicateNamedArg(ctx, fixedLoc, key->loc, "fixed");
                                 sym.data(ctx)->setFixed();
+                                break;
 
-                                // TODO(nelhage): This creates an order
-                                // dependency in the resolver. See RUBYPLAT-520
-                                sym.data(ctx)->resultType = core::Types::untyped(ctx, sym);
-
-                                asgn->lhs = ast::MK::Constant(asgn->lhs->loc, sym);
-                                continue;
-
-                            // intentionally falling through here
                             case core::Names::lower()._id:
+                                checkDuplicateNamedArg(ctx, lowerLoc, key->loc, "lower");
+                                sym.data(ctx)->setBounded();
+                                break;
+
                             case core::Names::upper()._id:
+                                checkDuplicateNamedArg(ctx, upperLoc, key->loc, "upper");
                                 sym.data(ctx)->setBounded();
                                 break;
                         }
@@ -785,28 +799,29 @@ public:
                 const bool fixed = sym.data(ctx)->isFixed();
                 const bool bounded = sym.data(ctx)->isBounded();
 
-                // For now, bounded type members are not supported
-                if (bounded) {
-                    if (auto e = ctx.state.beginError(send->loc, core::errors::Namer::InvalidTypeDefinition)) {
-                        e.setHeader("Only `{}` type members are supported", ":fixed");
-                    }
-                }
-
-                // one of :fixed or bounds were provided
+                // one of fixed or bounds were provided
                 if (fixed != bounded) {
+                    asgn->lhs = ast::MK::Constant(asgn->lhs->loc, sym);
+
+                    // TODO(nelhage): This creates an order dependency in the
+                    // resolver. See RUBYPLAT-520
+                    sym.data(ctx)->resultType = core::Types::untyped(ctx, sym);
+
+                    // Leave it in the tree for the resolver to chew on.
                     return asgn;
                 } else if (fixed) {
-                    // both :fixed and bounds were specified
+                    // both fixed and bounds were specified
                     if (auto e = ctx.state.beginError(send->loc, core::errors::Namer::InvalidTypeDefinition)) {
-                        e.setHeader("Type member is defined with bounds and `{}`", ":fixed");
+                        e.setHeader("Type member is defined with bounds and `{}`", "fixed");
                     }
                 } else {
                     if (auto e = ctx.state.beginError(send->loc, core::errors::Namer::InvalidTypeDefinition)) {
-                        e.setHeader("Missing required param :fixed");
+                        e.setHeader("Missing required param `{}`", "fixed");
                     }
                 }
             }
         }
+
         return make_unique<ast::EmptyTree>();
     }
 

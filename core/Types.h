@@ -258,11 +258,20 @@ public:
 };
 CheckSize(ClassType, 16, 8);
 
+/*
+ * This is the type used to represent a use of a type_member or type_template in
+ * a signature.
+ */
 class LambdaParam final : public Type {
 public:
     SymbolRef definition;
 
-    LambdaParam(const SymbolRef definition);
+    // The type bounds provided in the definition of the type_member or
+    // type_template.
+    TypePtr lower;
+    TypePtr upper;
+
+    LambdaParam(const SymbolRef definition, const TypePtr lower, const TypePtr upper);
     virtual std::string toStringWithTabs(const GlobalState &gs, int tabs = 0) const final;
     virtual std::string show(const GlobalState &gs) const final;
     virtual std::string typeName() const final;
@@ -277,8 +286,12 @@ public:
     virtual TypePtr _instantiate(Context ctx, const InlinedVector<SymbolRef, 4> &params,
                                  const std::vector<TypePtr> &targs) override;
     virtual int kind() final;
+
+    bool isFixed() const {
+        return this->lower == this->upper;
+    }
 };
-CheckSize(LambdaParam, 16, 8);
+CheckSize(LambdaParam, 48, 8);
 
 class SelfTypeParam final : public Type {
 public:
@@ -376,6 +389,9 @@ public:
 };
 CheckSize(LiteralType, 24, 8);
 
+/*
+ * TypeVars are the used for the type parameters of generic methods.
+ */
 class TypeVar final : public Type {
 public:
     SymbolRef sym;

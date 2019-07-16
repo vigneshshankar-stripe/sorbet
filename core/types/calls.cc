@@ -1101,8 +1101,14 @@ public:
         targs.reserve(attachedClass.data(ctx)->typeMembers().size());
         for (auto mem : attachedClass.data(ctx)->typeMembers()) {
             ++i;
-            if (mem.data(ctx)->isFixed()) {
-                targs.emplace_back(mem.data(ctx)->resultType);
+
+            // TODO: why is mem.data(ctx)->resultType sometimes nullptr?
+            if (auto *memType = cast_type<LambdaParam>(mem.data(ctx)->resultType.get())) {
+                // Fixed args are implicitly applied, and won't consume type
+                // arguments from the list that's supplied.
+                if (memType->isFixed()) {
+                    targs.emplace_back(memType->lower);
+                }
             } else if (it != args.args.end()) {
                 targs.emplace_back(unwrapType(ctx, args.locs.args[it - args.args.begin()], (*it)->type));
                 ++it;

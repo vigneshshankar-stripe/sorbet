@@ -1318,18 +1318,41 @@ public:
                 Exception::raise("Wrong arg count");
             }
 
+            auto lowerBound = core::Types::bottom();
+            auto upperBound = core::Types::top();
+
             auto *hash = ast::cast_tree<ast::Hash>(send->args[arg].get());
             if (hash) {
                 int i = -1;
                 for (auto &keyExpr : hash->keys) {
                     i++;
                     auto lit = ast::cast_tree<ast::Literal>(keyExpr.get());
-                    if (lit && lit->isSymbol(ctx) && lit->asSymbol(ctx) == core::Names::fixed()) {
+                    if (lit && lit->isSymbol(ctx)) {
                         ParsedSig emptySig;
-                        data->resultType = TypeSyntax::getResultType(ctx, *(hash->values[i]), emptySig, false, sym);
+                        core::TypePtr resTy = TypeSyntax::getResultType(ctx, *(hash->values[i]), emptySig, false, sym);
+
+                        switch (lit->asSymbol(ctx)._id) {
+                            case core::Names::fixed()._id:
+                                lowerBound = resTy;
+                                upperBound = resTy;
+                                break;
+
+                            case core::Names::lower()._id:
+                                lowerBound = resTy;
+                                break;
+
+                            case core::Names::upper()._id:
+                                upperBound = resTy;
+                                break;
+                        }
                     }
                 }
+
             }
+
+            // NOTE: this is going to form a cycle:
+            // sym == sym.data(ctx)->resultType->LambdaParam.definition
+            data->resultType = core::make_type<core::LambdaParam>(sym, lowerBound, upperBound);
         } else if (data->isStaticField() && data->resultType == nullptr) {
             data->resultType = resolveConstantType(ctx, asgn->rhs, sym);
         }

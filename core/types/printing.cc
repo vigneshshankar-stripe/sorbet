@@ -384,7 +384,12 @@ string AppliedType::show(const GlobalState &gs) const {
 }
 
 string LambdaParam::toStringWithTabs(const GlobalState &gs, int tabs) const {
-    return fmt::format("LambdaParam({})", this->definition.data(gs)->toStringFullName(gs));
+    auto lowerStr = this->lower->toString(gs);
+    if (this->lower == this->upper) {
+        return fmt::format("LambdaParam({}, fixed={})", this->definition.data(gs)->toStringFullName(gs), lowerStr);
+    } else {
+        return fmt::format("LambdaParam({}, lower={}, upper={})", this->definition.data(gs)->toStringFullName(gs), lowerStr, this->upper->toString(gs));
+    }
 }
 
 string LambdaParam::show(const GlobalState &gs) const {
