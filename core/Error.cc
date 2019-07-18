@@ -8,8 +8,8 @@
 #include "core/GlobalState.h"
 #include "core/errors/errors.h"
 #include "core/lsp/QueryResponse.h"
+#include "spdlog/fmt/bundled/ostream.h"
 #include <algorithm>
-#include <sstream>
 
 template class std::unique_ptr<sorbet::core::Error>;
 namespace sorbet::core {
@@ -45,64 +45,64 @@ bool Error::isCritical() const {
 }
 
 string restoreColors(string_view formatted, rang::fg color) {
-    stringstream buf;
-    buf << color;
-    return _replaceAll(formatted, REVERT_COLOR_SIGIL, buf.str());
+    fmt::memory_buffer buf;
+    fmt::format_to(buf, "{}", color);
+    return _replaceAll(formatted, REVERT_COLOR_SIGIL, to_string(buf));
 }
 
 string ErrorLine::toString(const GlobalState &gs, bool color) const {
-    stringstream buf;
+    fmt::memory_buffer buf;
     string indent = "  ";
-    buf << indent << FILE_POS_STYLE << loc.filePosToString(gs) << RESET_STYLE << ":";
+    fmt::format_to(buf, "{}{}{}{}:", indent, FILE_POS_STYLE, loc.filePosToString(gs), RESET_STYLE);
     if (!formattedMessage.empty()) {
-        buf << " ";
+        fmt::format_to(buf, " ");
         if (color) {
-            buf << DETAIL_COLOR << restoreColors(formattedMessage, DETAIL_COLOR) << RESET_COLOR;
+            fmt::format_to(buf, "{}{}{}", DETAIL_COLOR, restoreColors(formattedMessage, DETAIL_COLOR), RESET_COLOR);
         } else {
-            buf << restoreColors(formattedMessage, RESET_COLOR);
+            fmt::format_to(buf, "{}", restoreColors(formattedMessage, RESET_COLOR));
         }
     }
 
     if (loc.exists()) {
-        buf << '\n' << loc.toStringWithTabs(gs, 2);
+        fmt::format_to(buf, "\n{}", loc.toStringWithTabs(gs, 2));
     }
-    return buf.str();
+    return to_string(buf);
 }
 
 string ErrorSection::toString(const GlobalState &gs) const {
-    stringstream buf;
+    fmt::memory_buffer buf;
     string indent = "  ";
     bool coloredLineHeaders = true;
     bool skipEOL = false;
     if (!this->header.empty()) {
         coloredLineHeaders = false;
-        buf << indent << DETAIL_COLOR << restoreColors(this->header, DETAIL_COLOR) << RESET_COLOR;
+        fmt::format_to(buf, "{}{}{}{}", indent, DETAIL_COLOR, restoreColors(this->header, DETAIL_COLOR), RESET_COLOR);
     } else {
         skipEOL = true;
     }
     for (auto &line : this->messages) {
         if (!skipEOL) {
-            buf << '\n';
+            fmt::format_to(buf, "\n");
         }
         skipEOL = false;
-        buf << indent << line.toString(gs, coloredLineHeaders);
+        fmt::format_to(buf, "{}{}", indent, line.toString(gs, coloredLineHeaders));
     }
-    return buf.str();
+    return to_string(buf);
 }
 
 string Error::toString(const GlobalState &gs) const {
-    stringstream buf;
-    buf << RESET_STYLE << FILE_POS_STYLE << loc.filePosToString(gs) << RESET_STYLE << ": " << ERROR_COLOR
-        << restoreColors(header, ERROR_COLOR) << RESET_COLOR << LOW_NOISE_COLOR << " " << gs.errorUrlBase << what.code
-        << RESET_COLOR;
+    fmt::memory_buffer buf;
+    fmt::format_to(buf, "{}{}{}{}: {}{}{}{} {}{}{}", RESET_STYLE, FILE_POS_STYLE, loc.filePosToString(gs), RESET_STYLE,
+                   ERROR_COLOR, restoreColors(header, ERROR_COLOR), RESET_COLOR, LOW_NOISE_COLOR, gs.errorUrlBase,
+                   what.code, RESET_COLOR);
     if (loc.exists()) {
-        buf << '\n' << loc.toStringWithTabs(gs, 2);
+        fmt::format_to(buf, "\n{}", loc.toStringWithTabs(gs, 2));
     }
 
     for (auto &section : this->sections) {
-        buf << '\n' << section.toString(gs);
+        fmt::format_to(buf, "\n{}", section.toString(gs));
     }
-    return buf.str();
+    return to_string(buf);
 }
 
 ErrorRegion::~ErrorRegion() {
@@ -162,9 +162,9 @@ string ErrorColors::coloredPatternReplace = (string)coloredPatternSigil;
 
 void ErrorColors::enableColors() {
     rang::setControlMode(rang::control::Force);
-    stringstream buf;
-    buf << INTERPOLATION_COLOR << "{}" << REVERT_COLOR_SIGIL;
-    coloredPatternReplace = buf.str();
+    fmt::memory_buffer buf;
+    fmt::format_to(buf, "{}{{}}{}", INTERPOLATION_COLOR, REVERT_COLOR_SIGIL);
+    coloredPatternReplace = to_string(buf);
 }
 void ErrorColors::disableColors() {
     coloredPatternReplace = coloredPatternSigil;
