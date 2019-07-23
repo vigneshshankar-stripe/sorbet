@@ -247,6 +247,29 @@ class Opus::Types::Test::EdgeCasesTest < Critic::Unit::UnitTest
     end
   end
 
+  it "allows well-behaved custom hooks" do
+    c1 = Class.new do
+      extend T::Sig
+
+      sig {returns(Integer)}
+      def foo; 1; end
+
+      def self.method_added(name)
+        super(name)
+      end
+
+      def self.singleton_method_added(name)
+        super(name)
+      end
+
+      sig {returns(Integer)}
+      def bar; "bad"; end
+    end
+
+    assert_equal(1, c1.new.foo)
+    assert_raises(TypeError) { c1.new.bar }
+  end
+
   it "does not make sig available to attached class" do
     assert_raises(NoMethodError) do
       Class.new do
