@@ -20,7 +20,6 @@ class A1
 
   # should fail: T4 mentions another type member (this message could be better)
   T4 = type_member(fixed: T1)
-# ^^^^^^^^^^^^^^^^^^^^^^^^^^^ error: Expression does not have a fully-defined type
 
   # should fail: the bounds are invalid
   T5 = type_member(lower: Animal, upper: Persian)
@@ -29,7 +28,6 @@ class A1
   # should fail: type member used as an argument to another type (this message
   # could be better)
   T6 = type_member(fixed: T::Array[T1])
-# ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ error: Expression does not have a fully-defined type
 
   # should fail: type member used as an argument to another type
   T7 = type_member(lower: T::Array[T1])
@@ -45,7 +43,6 @@ class A1
 
   # should fail: still using a type member in the definition of another
   T10 = type_member(fixed: T9)
-# ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ error: Expression does not have
 
   # should fail: using a type alias in bounds
   T11 = type_member(upper: T9)
