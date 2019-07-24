@@ -30,8 +30,9 @@ vector<TypePtr> Symbol::selfTypeArgs(const GlobalState &gs) const {
     ENFORCE(isClass()); // should be removed when we have generic methods
     vector<TypePtr> targs;
     for (auto tm : typeMembers()) {
-        if (tm.data(gs)->isFixed()) {
-            targs.emplace_back(tm.data(gs)->resultType);
+        auto *lambdaParam = cast_type<LambdaParam>(tm.data(gs)->resultType.get());
+        if (lambdaParam != nullptr && lambdaParam->isFixed()) {
+            targs.emplace_back(lambdaParam->lower);
         } else {
             targs.emplace_back(make_type<SelfTypeParam>(tm));
         }
@@ -60,8 +61,9 @@ TypePtr Symbol::externalType(const GlobalState &gs) const {
         } else {
             vector<TypePtr> targs;
             for (auto tm : typeMembers()) {
-                if (tm.data(gs)->isFixed()) {
-                    targs.emplace_back(tm.data(gs)->resultType);
+                auto *lambdaParam = cast_type<LambdaParam>(tm.data(gs)->resultType.get());
+                if (lambdaParam && lambdaParam->isFixed()) {
+                    targs.emplace_back(lambdaParam->lower);
                 } else {
                     targs.emplace_back(Types::untyped(gs, ref));
                 }

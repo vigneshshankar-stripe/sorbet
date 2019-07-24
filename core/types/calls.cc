@@ -1103,12 +1103,11 @@ public:
             ++i;
 
             // TODO: why is mem.data(ctx)->resultType sometimes nullptr?
-            if (auto *memType = cast_type<LambdaParam>(mem.data(ctx)->resultType.get())) {
+            auto *memType = cast_type<LambdaParam>(mem.data(ctx)->resultType.get());
+            if (memType != nullptr && memType->isFixed()) {
                 // Fixed args are implicitly applied, and won't consume type
                 // arguments from the list that's supplied.
-                if (memType->isFixed()) {
-                    targs.emplace_back(memType->lower);
-                }
+                targs.emplace_back(memType->lower);
             } else if (it != args.args.end()) {
                 targs.emplace_back(unwrapType(ctx, args.locs.args[it - args.args.begin()], (*it)->type));
                 ++it;
