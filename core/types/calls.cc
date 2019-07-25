@@ -1114,21 +1114,18 @@ public:
                 auto loc = args.locs.args[it - args.args.begin()];
                 auto argType = unwrapType(ctx, loc, (*it)->type);
 
-                // validate bounds
+                // Validate type parameter bounds.
                 if (memType != nullptr) {
 
                     if (!Types::isSubType(ctx, argType, memType->upper)) {
-                        argType = Types::untypedUntracked();
-
                         if (auto e = ctx.state.beginError(loc, errors::Infer::GenericTypeParamBoundMismatch)) {
                             auto argStr = argType->show(ctx);
                             e.setHeader("`{}` cannot be used for type member `{}`", argStr, memData->showFullName(ctx));
                             e.addErrorLine(loc, "`{}` is not a subtype of `{}`", argStr, memType->upper->show(ctx));
                         }
                     }
-                    if (!Types::isSubType(ctx, memType->lower, argType)) {
-                        argType = Types::untypedUntracked();
 
+                    if (!Types::isSubType(ctx, memType->lower, argType)) {
                         if (auto e = ctx.state.beginError(loc, errors::Infer::GenericTypeParamBoundMismatch)) {
                             auto argStr = argType->show(ctx);
                             e.setHeader("`{}` cannot be used for type member `{}`", argStr, memData->showFullName(ctx));
