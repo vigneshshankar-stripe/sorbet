@@ -661,7 +661,8 @@ public:
     }
 
     // Utility function that checks for duplicate named arguments.
-    void checkDuplicateNamedArg(const core::Context ctx, std::optional<core::Loc> &prevLoc, const core::Loc &loc, string_view variety) {
+    void checkDuplicateNamedArg(const core::Context ctx, std::optional<core::Loc> &prevLoc, const core::Loc &loc,
+                                string_view variety) {
         if (prevLoc.has_value()) {
             if (auto e = ctx.state.beginError(loc, core::errors::Namer::InvalidTypeDefinition)) {
                 e.setHeader("Duplicate use of `{}`", variety);

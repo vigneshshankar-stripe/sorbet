@@ -1117,7 +1117,6 @@ public:
 
                 // Validate type parameter bounds.
                 if (memType != nullptr) {
-
                     if (!Types::isSubType(ctx, argType, memType->upper)) {
                         validBounds = false;
                         if (auto e = ctx.state.beginError(loc, errors::Infer::GenericTypeParamBoundMismatch)) {

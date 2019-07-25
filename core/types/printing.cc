@@ -388,7 +388,8 @@ string LambdaParam::toStringWithTabs(const GlobalState &gs, int tabs) const {
     if (this->lower == this->upper) {
         return fmt::format("LambdaParam({}, fixed={})", this->definition.data(gs)->toStringFullName(gs), lowerStr);
     } else {
-        return fmt::format("LambdaParam({}, lower={}, upper={})", this->definition.data(gs)->toStringFullName(gs), lowerStr, this->upper->toString(gs));
+        return fmt::format("LambdaParam({}, lower={}, upper={})", this->definition.data(gs)->toStringFullName(gs),
+                           lowerStr, this->upper->toString(gs));
     }
 }
 

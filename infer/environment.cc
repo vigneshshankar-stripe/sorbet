@@ -823,7 +823,6 @@ core::TypePtr Environment::processBinding(core::Context ctx, cfg::Binding &bind,
                     tp.origins.emplace_back(symbol.data(ctx)->loc());
                 } else if (data->isField() || (data->isStaticField() && !data->isTypeAlias()) || data->isTypeMember()) {
                     if (data->resultType.get() != nullptr) {
-
                         // When the RHS is a type member, the type of this
                         // alias will always be a LambdaParam. Explicitly
                         // disable the fully-defined check in this case.

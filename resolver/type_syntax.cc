@@ -631,7 +631,8 @@ TypeSyntax::ResultType TypeSyntax::getResultTypeAndBind(core::MutableContext ctx
                     if (auto *lambdaParam = core::cast_type<core::LambdaParam>(symData->resultType.get())) {
                         result.type = core::make_type<core::LambdaParam>(sym, lambdaParam->lower, lambdaParam->upper);
                     } else {
-                        result.type = core::make_type<core::LambdaParam>(sym, core::Types::bottom(), core::Types::top());
+                        result.type =
+                            core::make_type<core::LambdaParam>(sym, core::Types::bottom(), core::Types::top());
                     }
                 } else {
                     if (auto e = ctx.state.beginError(i->loc, core::errors::Resolver::InvalidTypeDeclarationTyped)) {
