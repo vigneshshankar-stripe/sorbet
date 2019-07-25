@@ -15,15 +15,16 @@ class A1
 
   # should fail: T3 mentions another type member
   T3 = type_member(lower: T2, upper: T1)
+     # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ error: `A1::T2` is not a subtype of `A1::T1`
 
   # should fail: T4 mentions another type member (this message could be better)
   T4 = type_member(fixed: T1)
 
   # should fail: the bounds are invalid
   T5 = type_member(lower: Animal, upper: Persian)
+     # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ error: `Animal` is not a subtype of `Persian`
 
-  # should fail: type member used as an argument to another type (this message
-  # could be better)
+  # should fail: type member used as an argument to another type
   T6 = type_member(fixed: T::Array[T1])
 
   # should fail: type member used as an argument to another type
@@ -44,6 +45,7 @@ class A1
 
   # should fail: multiple upper and lower bounds specified
   T12 = type_member(lower: Integer, lower: String, upper: BasicObject, upper: TrueClass)
+      # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ error: `String` is not a subtype of `TrueClass`
                                   # ^^^^^ error: Duplicate use of `lower`
                                                                      # ^^^^^ error: Duplicate use of `upper`
 

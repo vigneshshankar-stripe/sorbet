@@ -1348,6 +1348,12 @@ public:
                     }
                 }
 
+                // validate the bounds
+                if (!core::Types::isSubType(ctx, lowerBound, upperBound)) {
+                    if (auto e = ctx.state.beginError(send->loc, core::errors::Resolver::InvalidTypeMemberBounds)) {
+                        e.setHeader("`{}` is not a subtype of `{}`", lowerBound->show(ctx), upperBound->show(ctx));
+                    }
+                }
             }
 
             // NOTE: this is going to form a cycle:
