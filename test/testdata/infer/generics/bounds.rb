@@ -78,5 +78,7 @@ class Test
 
   # should fail: Integer is not within the Animal/Persian bounds.
   sig {params(arg1: A2[Integer], arg2: A2[BasicObject]).void}
+                     # ^^^^^^^ error-with-dupes: `Integer` cannot be used for type member `::A2::X`
+                                        # ^^^^^^^^^^^ error-with-dupes: `BasicObject` cannot be used for type member `::A2::X`
   def test2(arg1, arg2); end
 end

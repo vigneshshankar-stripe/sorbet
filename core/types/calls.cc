@@ -1099,6 +1099,7 @@ public:
         auto it = args.args.begin();
         int i = -1;
         targs.reserve(attachedClass.data(ctx)->typeMembers().size());
+        bool validBounds = true;
         for (auto mem : attachedClass.data(ctx)->typeMembers()) {
             ++i;
 
@@ -1118,6 +1119,7 @@ public:
                 if (memType != nullptr) {
 
                     if (!Types::isSubType(ctx, argType, memType->upper)) {
+                        validBounds = false;
                         if (auto e = ctx.state.beginError(loc, errors::Infer::GenericTypeParamBoundMismatch)) {
                             auto argStr = argType->show(ctx);
                             e.setHeader("`{}` cannot be used for type member `{}`", argStr, memData->showFullName(ctx));
@@ -1126,6 +1128,8 @@ public:
                     }
 
                     if (!Types::isSubType(ctx, memType->lower, argType)) {
+                        validBounds = false;
+
                         if (auto e = ctx.state.beginError(loc, errors::Infer::GenericTypeParamBoundMismatch)) {
                             auto argStr = argType->show(ctx);
                             e.setHeader("`{}` cannot be used for type member `{}`", argStr, memData->showFullName(ctx));
@@ -1144,7 +1148,11 @@ public:
             }
         }
 
-        res.returnType = make_type<MetaType>(make_type<AppliedType>(attachedClass, move(targs)));
+        if (validBounds) {
+            res.returnType = make_type<MetaType>(make_type<AppliedType>(attachedClass, move(targs)));
+        } else {
+            res.returnType = Types::untypedUntracked();
+        }
     }
 } T_Generic_squareBrackets;
 
