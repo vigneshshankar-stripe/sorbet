@@ -58,9 +58,9 @@ public:
         core::SymbolRef rebind;
     };
     static ResultType getResultTypeAndBind(core::MutableContext ctx, ast::Expression &expr, const ParsedSig &,
-                                           bool allowSelfType, bool allowRebind, core::SymbolRef untypedBlame);
+                                           bool allowSelfType, bool allowTypeMember, bool allowRebind, core::SymbolRef untypedBlame);
     static core::TypePtr getResultType(core::MutableContext ctx, ast::Expression &expr, const ParsedSig &,
-                                       bool allowSelfType, core::SymbolRef untypedBlame);
+                                       bool allowSelfType, bool allowTypeMember, core::SymbolRef untypedBlame);
 
     TypeSyntax() = delete;
 };

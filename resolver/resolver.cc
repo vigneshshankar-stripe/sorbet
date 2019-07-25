@@ -320,7 +320,7 @@ private:
             return true;
         }
         if (isFullyResolved(ctx, job.rhs)) {
-            job.lhs.data(ctx)->resultType = TypeSyntax::getResultType(ctx, *(job.rhs), ParsedSig{}, true, job.lhs);
+            job.lhs.data(ctx)->resultType = TypeSyntax::getResultType(ctx, *(job.rhs), ParsedSig{}, true, true, job.lhs);
             return true;
         }
 
@@ -1329,7 +1329,7 @@ public:
                     auto lit = ast::cast_tree<ast::Literal>(keyExpr.get());
                     if (lit && lit->isSymbol(ctx)) {
                         ParsedSig emptySig;
-                        core::TypePtr resTy = TypeSyntax::getResultType(ctx, *(hash->values[i]), emptySig, false, sym);
+                        core::TypePtr resTy = TypeSyntax::getResultType(ctx, *(hash->values[i]), emptySig, false, false, sym);
 
                         switch (lit->asSymbol(ctx)._id) {
                             case core::Names::fixed()._id:
@@ -1422,7 +1422,7 @@ public:
                     auto expr = std::move(send->args[0]);
                     ParsedSig emptySig;
                     auto type = TypeSyntax::getResultType(ctx.withOwner(ownerClass), *(send->args[1]), emptySig, false,
-                                                          core::Symbols::noSymbol());
+                                                          true, core::Symbols::noSymbol());
                     return ast::MK::InsSeq1(send->loc, ast::MK::KeepForTypechecking(std::move(send->args[1])),
                                             make_unique<ast::Cast>(send->loc, type, std::move(expr), send->fun));
                 }

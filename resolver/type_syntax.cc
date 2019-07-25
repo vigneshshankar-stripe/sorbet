@@ -179,7 +179,7 @@ ParsedSig TypeSyntax::parseSig(core::MutableContext ctx, ast::Send *sigSend, con
                         break;
                     }
 
-                    auto bind = getResultType(ctx, *(send->args.front()), *parent, allowSelfType, untypedBlame);
+                    auto bind = getResultType(ctx, *(send->args.front()), *parent, allowSelfType, true, untypedBlame);
                     auto classType = core::cast_type<core::ClassType>(bind.get());
                     if (!classType) {
                         if (auto e = ctx.state.beginError(send->loc, core::errors::Resolver::InvalidMethodSignature)) {
@@ -229,7 +229,7 @@ ParsedSig TypeSyntax::parseSig(core::MutableContext ctx, ast::Send *sigSend, con
                         if (lit && lit->isSymbol(ctx)) {
                             core::NameRef name = lit->asSymbol(ctx);
                             auto resultAndBind =
-                                getResultTypeAndBind(ctx, *value, *parent, allowSelfType, true, untypedBlame);
+                                getResultTypeAndBind(ctx, *value, *parent, allowSelfType, true, true, untypedBlame);
                             sig.argTypes.emplace_back(
                                 ParsedSig::ArgSpec{key->loc, name, resultAndBind.type, resultAndBind.rebind});
                         }
@@ -306,7 +306,7 @@ ParsedSig TypeSyntax::parseSig(core::MutableContext ctx, ast::Send *sigSend, con
                         break;
                     }
 
-                    sig.returns = getResultType(ctx, *(send->args.front()), *parent, allowSelfType, untypedBlame);
+                    sig.returns = getResultType(ctx, *(send->args.front()), *parent, allowSelfType, true, untypedBlame);
 
                     break;
                 }
@@ -361,7 +361,7 @@ ParsedSig TypeSyntax::parseSig(core::MutableContext ctx, ast::Send *sigSend, con
     return sig;
 }
 
-core::TypePtr interpretTCombinator(core::MutableContext ctx, ast::Send *send, const ParsedSig &sig, bool allowSelfType,
+core::TypePtr interpretTCombinator(core::MutableContext ctx, ast::Send *send, const ParsedSig &sig, bool allowSelfType, bool allowTypeMember,
                                    core::SymbolRef untypedBlame) {
     switch (send->fun._id) {
         case core::Names::nilable()._id:
@@ -369,18 +369,18 @@ core::TypePtr interpretTCombinator(core::MutableContext ctx, ast::Send *send, co
                 return core::Types::untypedUntracked(); // error will be reported in infer.
             }
             return core::Types::any(ctx,
-                                    TypeSyntax::getResultType(ctx, *(send->args[0]), sig, allowSelfType, untypedBlame),
+                                    TypeSyntax::getResultType(ctx, *(send->args[0]), sig, allowSelfType, allowTypeMember, untypedBlame),
                                     core::Types::nilClass());
         case core::Names::all()._id: {
             if (send->args.empty()) {
                 // Error will be reported in infer
                 return core::Types::untypedUntracked();
             }
-            auto result = TypeSyntax::getResultType(ctx, *(send->args[0]), sig, allowSelfType, untypedBlame);
+            auto result = TypeSyntax::getResultType(ctx, *(send->args[0]), sig, allowSelfType, allowTypeMember, untypedBlame);
             int i = 1;
             while (i < send->args.size()) {
                 result = core::Types::all(
-                    ctx, result, TypeSyntax::getResultType(ctx, *(send->args[i]), sig, allowSelfType, untypedBlame));
+                    ctx, result, TypeSyntax::getResultType(ctx, *(send->args[i]), sig, allowSelfType, allowTypeMember, untypedBlame));
                 i++;
             }
             return result;
@@ -390,11 +390,11 @@ core::TypePtr interpretTCombinator(core::MutableContext ctx, ast::Send *send, co
                 // Error will be reported in infer
                 return core::Types::untypedUntracked();
             }
-            auto result = TypeSyntax::getResultType(ctx, *(send->args[0]), sig, allowSelfType, untypedBlame);
+            auto result = TypeSyntax::getResultType(ctx, *(send->args[0]), sig, allowSelfType, allowTypeMember, untypedBlame);
             int i = 1;
             while (i < send->args.size()) {
                 result = core::Types::any(
-                    ctx, result, TypeSyntax::getResultType(ctx, *(send->args[i]), sig, allowSelfType, untypedBlame));
+                    ctx, result, TypeSyntax::getResultType(ctx, *(send->args[i]), sig, allowSelfType, allowTypeMember, untypedBlame));
                 i++;
             }
             return result;
@@ -516,13 +516,13 @@ core::TypePtr interpretTCombinator(core::MutableContext ctx, ast::Send *send, co
 
 core::TypePtr TypeSyntax::getResultType(core::MutableContext ctx, ast::Expression &expr,
                                         const ParsedSig &sigBeingParsed, bool allowSelfType,
-                                        core::SymbolRef untypedBlame) {
-    return getResultTypeAndBind(ctx, expr, sigBeingParsed, allowSelfType, false, untypedBlame).type;
+                                        bool allowTypeMember, core::SymbolRef untypedBlame) {
+    return getResultTypeAndBind(ctx, expr, sigBeingParsed, allowSelfType, allowTypeMember, false, untypedBlame).type;
 }
 
 TypeSyntax::ResultType TypeSyntax::getResultTypeAndBind(core::MutableContext ctx, ast::Expression &expr,
                                                         const ParsedSig &sigBeingParsed, bool allowSelfType,
-                                                        bool allowRebind, core::SymbolRef untypedBlame) {
+                                                        bool allowTypeMember, bool allowRebind, core::SymbolRef untypedBlame) {
     // Ensure that we only check types from a class context
     auto ctxOwnerData = ctx.owner.data(ctx);
     ENFORCE(ctxOwnerData->isClass(), "getResultTypeAndBind wasn't called with a class owner");
@@ -533,7 +533,7 @@ TypeSyntax::ResultType TypeSyntax::getResultTypeAndBind(core::MutableContext ctx
         [&](ast::Array *arr) {
             vector<core::TypePtr> elems;
             for (auto &el : arr->elems) {
-                elems.emplace_back(getResultType(ctx, *el, sigBeingParsed, false, untypedBlame));
+                elems.emplace_back(getResultType(ctx, *el, sigBeingParsed, false, allowTypeMember, untypedBlame));
             }
             result.type = core::TupleType::build(ctx, elems);
         },
@@ -543,7 +543,7 @@ TypeSyntax::ResultType TypeSyntax::getResultTypeAndBind(core::MutableContext ctx
 
             for (auto &ktree : hash->keys) {
                 auto &vtree = hash->values[&ktree - &hash->keys.front()];
-                auto val = getResultType(ctx, *vtree, sigBeingParsed, false, untypedBlame);
+                auto val = getResultType(ctx, *vtree, sigBeingParsed, false, allowTypeMember, untypedBlame);
                 auto lit = ast::cast_tree<ast::Literal>(ktree.get());
                 if (lit && (lit->isSymbol(ctx) || lit->isString(ctx))) {
                     ENFORCE(core::cast_type<core::LiteralType>(lit->value.get()));
@@ -609,47 +609,57 @@ TypeSyntax::ResultType TypeSyntax::getResultTypeAndBind(core::MutableContext ctx
                 auto symOwner = symData->owner.data(ctx);
 
                 bool isTypeTemplate = symOwner->isSingletonClass(ctx);
-                bool ctxIsSingleton = ctxOwnerData->isSingletonClass(ctx);
 
-                // Check if we're processing a type within the class that
-                // defines this type member by comparing the singleton class of
-                // the context, and the singleton class of the type member's
-                // owner.
-                core::SymbolRef symOwnerSingleton =
-                    isTypeTemplate ? symData->owner : symOwner->lookupSingletonClass(ctx);
-                core::SymbolRef ctxSingleton = ctxIsSingleton ? ctx.owner : ctxOwnerData->lookupSingletonClass(ctx);
-                bool usedOnSourceClass = symOwnerSingleton == ctxSingleton;
+                if (allowTypeMember) {
+                    bool ctxIsSingleton = ctxOwnerData->isSingletonClass(ctx);
 
-                // For this to be a valid use of a member or template type, this
-                // must:
-                //
-                // 1. be used in the context of the class that defines it
-                // 2. if it's a type_template type, be used in a singleton
-                //    method
-                // 3. if it's a type_member type, be used in an instance method
-                if (usedOnSourceClass && ((isTypeTemplate && ctxIsSingleton) || !(isTypeTemplate || ctxIsSingleton))) {
-                    if (auto *lambdaParam = core::cast_type<core::LambdaParam>(symData->resultType.get())) {
-                        result.type = core::make_type<core::LambdaParam>(sym, lambdaParam->lower, lambdaParam->upper);
+                    // Check if we're processing a type within the class that
+                    // defines this type member by comparing the singleton class of
+                    // the context, and the singleton class of the type member's
+                    // owner.
+                    core::SymbolRef symOwnerSingleton =
+                        isTypeTemplate ? symData->owner : symOwner->lookupSingletonClass(ctx);
+                    core::SymbolRef ctxSingleton = ctxIsSingleton ? ctx.owner : ctxOwnerData->lookupSingletonClass(ctx);
+                    bool usedOnSourceClass = symOwnerSingleton == ctxSingleton;
+
+                    // For this to be a valid use of a member or template type, this
+                    // must:
+                    //
+                    // 1. be used in the context of the class that defines it
+                    // 2. if it's a type_template type, be used in a singleton
+                    //    method
+                    // 3. if it's a type_member type, be used in an instance method
+                    if (usedOnSourceClass && ((isTypeTemplate && ctxIsSingleton) || !(isTypeTemplate || ctxIsSingleton))) {
+                        if (auto *lambdaParam = core::cast_type<core::LambdaParam>(symData->resultType.get())) {
+                            result.type = core::make_type<core::LambdaParam>(sym, lambdaParam->lower, lambdaParam->upper);
+                        } else {
+                            result.type =
+                                core::make_type<core::LambdaParam>(sym, core::Types::bottom(), core::Types::top());
+                        }
                     } else {
-                        result.type =
-                            core::make_type<core::LambdaParam>(sym, core::Types::bottom(), core::Types::top());
+                        if (auto e = ctx.state.beginError(i->loc, core::errors::Resolver::InvalidTypeDeclarationTyped)) {
+                            string typeSource = isTypeTemplate ? "type_template" : "type_member";
+                            string typeStr = sym.show(ctx);
+
+                            if (usedOnSourceClass) {
+                                if (ctxIsSingleton) {
+                                    e.setHeader("`{}` type `{}` used in a singleton method definition", typeSource,
+                                                typeStr);
+                                } else {
+                                    e.setHeader("`{}` type `{}` used in an instance method definition", typeSource,
+                                                typeStr);
+                                }
+                            } else {
+                                e.setHeader("`{}` type `{}` used outside of the class definition", typeSource, typeStr);
+                            }
+                        }
+                        result.type = core::Types::untypedUntracked();
                     }
                 } else {
-                    if (auto e = ctx.state.beginError(i->loc, core::errors::Resolver::InvalidTypeDeclarationTyped)) {
-                        string typeSource = isTypeTemplate ? "type_template" : "type_member";
-                        string typeStr = sym.show(ctx);
-
-                        if (usedOnSourceClass) {
-                            if (ctxIsSingleton) {
-                                e.setHeader("`{}` type `{}` used in a singleton method definition", typeSource,
-                                            typeStr);
-                            } else {
-                                e.setHeader("`{}` type `{}` used in an instance method definition", typeSource,
-                                            typeStr);
-                            }
-                        } else {
-                            e.setHeader("`{}` type `{}` used outside of the class definition", typeSource, typeStr);
-                        }
+                    // a type member has occurred in a context that doesn't allow them
+                    if (auto e = ctx.state.beginError(i->loc, core::errors::Resolver::InvalidTypeDeclaration)) {
+                        auto flavor = isTypeTemplate ? "type_template"sv : "type_member"sv;
+                        e.setHeader("`{}` `{}` is not allowed in this context", flavor, sym.show(ctx));
                     }
                     result.type = core::Types::untypedUntracked();
                 }
@@ -720,7 +730,7 @@ TypeSyntax::ResultType TypeSyntax::getResultTypeAndBind(core::MutableContext ctx
                 return;
             }
             if (recvi->symbol == core::Symbols::T()) {
-                result.type = interpretTCombinator(ctx, s, sigBeingParsed, allowSelfType, untypedBlame);
+                result.type = interpretTCombinator(ctx, s, sigBeingParsed, allowSelfType, allowTypeMember, untypedBlame);
                 return;
             }
 
@@ -751,7 +761,7 @@ TypeSyntax::ResultType TypeSyntax::getResultTypeAndBind(core::MutableContext ctx
                 core::TypeAndOrigins ty;
                 ty.origins.emplace_back(arg->loc);
                 ty.type = core::make_type<core::MetaType>(
-                    TypeSyntax::getResultType(ctx, *arg, sigBeingParsed, false, untypedBlame));
+                    TypeSyntax::getResultType(ctx, *arg, sigBeingParsed, false, allowTypeMember, untypedBlame));
                 holders.emplace_back(make_unique<core::TypeAndOrigins>(move(ty)));
                 targs.emplace_back(holders.back().get());
                 argLocs.emplace_back(arg->loc);
