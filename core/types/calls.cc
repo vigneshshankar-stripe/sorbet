@@ -1102,14 +1102,42 @@ public:
         for (auto mem : attachedClass.data(ctx)->typeMembers()) {
             ++i;
 
+            auto memData = mem.data(ctx);
+
             // TODO: why is mem.data(ctx)->resultType sometimes nullptr?
-            auto *memType = cast_type<LambdaParam>(mem.data(ctx)->resultType.get());
+            auto *memType = cast_type<LambdaParam>(memData->resultType.get());
             if (memType != nullptr && memType->isFixed()) {
                 // Fixed args are implicitly applied, and won't consume type
                 // arguments from the list that's supplied.
                 targs.emplace_back(memType->lower);
             } else if (it != args.args.end()) {
-                targs.emplace_back(unwrapType(ctx, args.locs.args[it - args.args.begin()], (*it)->type));
+                auto loc = args.locs.args[it - args.args.begin()];
+                auto argType = unwrapType(ctx, loc, (*it)->type);
+
+                // validate bounds
+                if (memType != nullptr) {
+
+                    if (!Types::isSubType(ctx, argType, memType->upper)) {
+                        argType = Types::untypedUntracked();
+
+                        if (auto e = ctx.state.beginError(loc, errors::Infer::GenericTypeParamBoundMismatch)) {
+                            auto argStr = argType->show(ctx);
+                            e.setHeader("`{}` cannot be used for type member `{}`", argStr, memData->showFullName(ctx));
+                            e.addErrorLine(loc, "`{}` is not a subtype of `{}`", argStr, memType->upper->show(ctx));
+                        }
+                    }
+                    if (!Types::isSubType(ctx, memType->lower, argType)) {
+                        argType = Types::untypedUntracked();
+
+                        if (auto e = ctx.state.beginError(loc, errors::Infer::GenericTypeParamBoundMismatch)) {
+                            auto argStr = argType->show(ctx);
+                            e.setHeader("`{}` cannot be used for type member `{}`", argStr, memData->showFullName(ctx));
+                            e.addErrorLine(loc, "`{}` is not a subtype of `{}`", memType->lower->show(ctx), argStr);
+                        }
+                    }
+                }
+
+                targs.emplace_back(argType);
                 ++it;
             } else if (attachedClass == Symbols::Hash() && i == 2) {
                 auto tupleArgs = targs;
