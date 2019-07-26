@@ -317,15 +317,8 @@ void SerializerImpl::pickle(Pickler &p, Type *what) {
         p.putU4(alias->symbol._id);
     } else if (auto *lp = cast_type<LambdaParam>(what)) {
         p.putU4(8);
-        // special-case fixed bounds to preserve sharing when unpickling
-        if (lp->lower == lp->upper) {
-            p.putU1(1);
-            pickle(p, lp->lower.get());
-        } else {
-            p.putU1(0);
-            pickle(p, lp->lower.get());
-            pickle(p, lp->upper.get());
-        }
+        pickle(p, lp->lowerBound.get());
+        pickle(p, lp->upperBound.get());
         p.putU4(lp->definition._id);
     } else if (auto *at = cast_type<AppliedType>(what)) {
         p.putU4(9);
@@ -404,9 +397,8 @@ TypePtr SerializerImpl::unpickleType(UnPickler &p, GlobalState *gs) {
         case 7:
             return make_type<AliasType>(SymbolRef(gs, p.getU4()));
         case 8: {
-            int isFixed = p.getU1();
             auto lower = unpickleType(p, gs);
-            auto upper = isFixed ? lower : unpickleType(p, gs);
+            auto upper = unpickleType(p, gs);
             return make_type<LambdaParam>(SymbolRef(gs, p.getU4()), lower, upper);
         }
         case 9: {

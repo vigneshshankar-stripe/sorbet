@@ -750,6 +750,11 @@ public:
             ctx.state.mangleRenameSymbol(oldSym, oldSym.data(ctx)->name);
         }
         auto sym = ctx.state.enterTypeMember(asgn->loc, onSymbol, typeName->cnst, variance);
+        auto symData = sym.data(ctx);
+
+        // ensure that every type member has a LambdaParam with bounds.
+        symData->resultType = core::make_type<core::LambdaParam>(sym, core::Types::bottom(), core::Types::top());
+
         if (isTypeTemplate) {
             auto context = ctx.owner.data(ctx)->enclosingClass(ctx);
             oldSym = context.data(ctx)->findMemberNoDealias(ctx, typeName->cnst);
@@ -769,9 +774,6 @@ public:
             auto *hash = ast::cast_tree<ast::Hash>(send->args.back().get());
             if (hash) {
                 int i = -1;
-                optional<core::Loc> fixedLoc = nullopt;
-                optional<core::Loc> lowerLoc = nullopt;
-                optional<core::Loc> upperLoc = nullopt;
 
                 for (auto &keyExpr : hash->keys) {
                     i++;
@@ -780,33 +782,23 @@ public:
                     if (key != nullptr && key->isSymbol(ctx)) {
                         switch (key->asSymbol(ctx)._id) {
                             case core::Names::fixed()._id:
-                                checkDuplicateNamedArg(ctx, fixedLoc, key->loc, "fixed");
                                 sym.data(ctx)->setFixed();
                                 break;
 
                             case core::Names::lower()._id:
-                                checkDuplicateNamedArg(ctx, lowerLoc, key->loc, "lower");
-                                sym.data(ctx)->setBounded();
-                                break;
-
                             case core::Names::upper()._id:
-                                checkDuplicateNamedArg(ctx, upperLoc, key->loc, "upper");
                                 sym.data(ctx)->setBounded();
                                 break;
                         }
                     }
                 }
 
-                const bool fixed = sym.data(ctx)->isFixed();
-                const bool bounded = sym.data(ctx)->isBounded();
+                const bool fixed = symData->isFixed();
+                const bool bounded = symData->isBounded();
 
                 // one of fixed or bounds were provided
                 if (fixed != bounded) {
                     asgn->lhs = ast::MK::Constant(asgn->lhs->loc, sym);
-
-                    // TODO(nelhage): This creates an order dependency in the
-                    // resolver. See RUBYPLAT-520
-                    sym.data(ctx)->resultType = core::Types::untyped(ctx, sym);
 
                     // Leave it in the tree for the resolver to chew on.
                     return asgn;

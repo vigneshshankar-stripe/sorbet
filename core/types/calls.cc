@@ -1105,35 +1105,34 @@ public:
 
             auto memData = mem.data(ctx);
 
-            // TODO: why is mem.data(ctx)->resultType sometimes nullptr?
             auto *memType = cast_type<LambdaParam>(memData->resultType.get());
-            if (memType != nullptr && memType->isFixed()) {
+            ENFORCE(memType != nullptr);
+
+            if (memData->isFixed()) {
                 // Fixed args are implicitly applied, and won't consume type
                 // arguments from the list that's supplied.
-                targs.emplace_back(memType->lower);
+                targs.emplace_back(memType->upperBound);
             } else if (it != args.args.end()) {
                 auto loc = args.locs.args[it - args.args.begin()];
                 auto argType = unwrapType(ctx, loc, (*it)->type);
 
                 // Validate type parameter bounds.
-                if (memType != nullptr) {
-                    if (!Types::isSubType(ctx, argType, memType->upper)) {
-                        validBounds = false;
-                        if (auto e = ctx.state.beginError(loc, errors::Infer::GenericTypeParamBoundMismatch)) {
-                            auto argStr = argType->show(ctx);
-                            e.setHeader("`{}` cannot be used for type member `{}`", argStr, memData->showFullName(ctx));
-                            e.addErrorLine(loc, "`{}` is not a subtype of `{}`", argStr, memType->upper->show(ctx));
-                        }
+                if (!Types::isSubType(ctx, argType, memType->upperBound)) {
+                    validBounds = false;
+                    if (auto e = ctx.state.beginError(loc, errors::Infer::GenericTypeParamBoundMismatch)) {
+                        auto argStr = argType->show(ctx);
+                        e.setHeader("`{}` cannot be used for type member `{}`", argStr, memData->showFullName(ctx));
+                        e.addErrorLine(loc, "`{}` is not a subtype of `{}`", argStr, memType->upperBound->show(ctx));
                     }
+                }
 
-                    if (!Types::isSubType(ctx, memType->lower, argType)) {
-                        validBounds = false;
+                if (!Types::isSubType(ctx, memType->lowerBound, argType)) {
+                    validBounds = false;
 
-                        if (auto e = ctx.state.beginError(loc, errors::Infer::GenericTypeParamBoundMismatch)) {
-                            auto argStr = argType->show(ctx);
-                            e.setHeader("`{}` cannot be used for type member `{}`", argStr, memData->showFullName(ctx));
-                            e.addErrorLine(loc, "`{}` is not a subtype of `{}`", memType->lower->show(ctx), argStr);
-                        }
+                    if (auto e = ctx.state.beginError(loc, errors::Infer::GenericTypeParamBoundMismatch)) {
+                        auto argStr = argType->show(ctx);
+                        e.setHeader("`{}` cannot be used for type member `{}`", argStr, memData->showFullName(ctx));
+                        e.addErrorLine(loc, "`{}` is not a subtype of `{}`", memType->lowerBound->show(ctx), argStr);
                     }
                 }
 

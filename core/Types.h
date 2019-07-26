@@ -268,10 +268,10 @@ public:
 
     // The type bounds provided in the definition of the type_member or
     // type_template.
-    TypePtr lower;
-    TypePtr upper;
+    TypePtr lowerBound;
+    TypePtr upperBound;
 
-    LambdaParam(const SymbolRef definition, const TypePtr lower, const TypePtr upper);
+    LambdaParam(SymbolRef definition, TypePtr lower, TypePtr upper);
     virtual std::string toStringWithTabs(const GlobalState &gs, int tabs = 0) const final;
     virtual std::string show(const GlobalState &gs) const final;
     virtual std::string typeName() const final;
@@ -286,10 +286,6 @@ public:
     virtual TypePtr _instantiate(Context ctx, const InlinedVector<SymbolRef, 4> &params,
                                  const std::vector<TypePtr> &targs) override;
     virtual int kind() final;
-
-    bool isFixed() const {
-        return this->lower == this->upper;
-    }
 };
 CheckSize(LambdaParam, 48, 8);
 

@@ -631,7 +631,7 @@ TypeSyntax::ResultType TypeSyntax::getResultTypeAndBind(core::MutableContext ctx
                     // 3. if it's a type_member type, be used in an instance method
                     if (usedOnSourceClass && ((isTypeTemplate && ctxIsSingleton) || !(isTypeTemplate || ctxIsSingleton))) {
                         if (auto *lambdaParam = core::cast_type<core::LambdaParam>(symData->resultType.get())) {
-                            result.type = core::make_type<core::LambdaParam>(sym, lambdaParam->lower, lambdaParam->upper);
+                            result.type = core::make_type<core::LambdaParam>(sym, lambdaParam->lowerBound, lambdaParam->upperBound);
                         } else {
                             result.type =
                                 core::make_type<core::LambdaParam>(sym, core::Types::bottom(), core::Types::top());

@@ -1318,8 +1318,8 @@ public:
                 Exception::raise("Wrong arg count");
             }
 
-            auto lowerBound = core::Types::bottom();
-            auto upperBound = core::Types::top();
+            auto *memberType = core::cast_type<core::LambdaParam>(data->resultType.get());
+            ENFORCE(memberType != nullptr);
 
             auto *hash = ast::cast_tree<ast::Hash>(send->args[arg].get());
             if (hash) {
@@ -1333,32 +1333,28 @@ public:
 
                         switch (lit->asSymbol(ctx)._id) {
                             case core::Names::fixed()._id:
-                                lowerBound = resTy;
-                                upperBound = resTy;
+                                memberType->lowerBound = resTy;
+                                memberType->upperBound = resTy;
                                 break;
 
                             case core::Names::lower()._id:
-                                lowerBound = resTy;
+                                memberType->lowerBound = resTy;
                                 break;
 
                             case core::Names::upper()._id:
-                                upperBound = resTy;
+                                memberType->upperBound = resTy;
                                 break;
                         }
                     }
                 }
 
                 // validate the bounds
-                if (!core::Types::isSubType(ctx, lowerBound, upperBound)) {
+                if (!core::Types::isSubType(ctx, memberType->lowerBound, memberType->upperBound)) {
                     if (auto e = ctx.state.beginError(send->loc, core::errors::Resolver::InvalidTypeMemberBounds)) {
-                        e.setHeader("`{}` is not a subtype of `{}`", lowerBound->show(ctx), upperBound->show(ctx));
+                        e.setHeader("`{}` is not a subtype of `{}`", memberType->lowerBound->show(ctx), memberType->upperBound->show(ctx));
                     }
                 }
             }
-
-            // NOTE: this is going to form a cycle:
-            // sym == sym.data(ctx)->resultType->LambdaParam.definition
-            data->resultType = core::make_type<core::LambdaParam>(sym, lowerBound, upperBound);
         } else if (data->isStaticField() && data->resultType == nullptr) {
             data->resultType = resolveConstantType(ctx, asgn->rhs, sym);
         }

@@ -30,9 +30,11 @@ vector<TypePtr> Symbol::selfTypeArgs(const GlobalState &gs) const {
     ENFORCE(isClass()); // should be removed when we have generic methods
     vector<TypePtr> targs;
     for (auto tm : typeMembers()) {
-        auto *lambdaParam = cast_type<LambdaParam>(tm.data(gs)->resultType.get());
-        if (lambdaParam != nullptr && lambdaParam->isFixed()) {
-            targs.emplace_back(lambdaParam->lower);
+        auto tmData = tm.data(gs);
+        if (tmData->isFixed()) {
+            auto *lambdaParam = cast_type<LambdaParam>(tmData->resultType.get());
+            ENFORCE(lambdaParam != nullptr);
+            targs.emplace_back(lambdaParam->upperBound);
         } else {
             targs.emplace_back(make_type<SelfTypeParam>(tm));
         }
@@ -61,12 +63,10 @@ TypePtr Symbol::externalType(const GlobalState &gs) const {
         } else {
             vector<TypePtr> targs;
             for (auto tm : typeMembers()) {
-                auto *lambdaParam = cast_type<LambdaParam>(tm.data(gs)->resultType.get());
-                if (lambdaParam && lambdaParam->isFixed()) {
-                    targs.emplace_back(lambdaParam->lower);
-                } else {
-                    targs.emplace_back(Types::untyped(gs, ref));
-                }
+                auto tmData = tm.data(gs);
+                auto *lambdaParam = cast_type<LambdaParam>(tmData->resultType.get());
+                ENFORCE(lambdaParam != nullptr);
+                targs.emplace_back(lambdaParam->upperBound);
             }
             newResultType = make_type<AppliedType>(ref, targs);
         }

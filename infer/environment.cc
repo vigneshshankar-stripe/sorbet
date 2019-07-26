@@ -830,6 +830,9 @@ core::TypePtr Environment::processBinding(core::Context ctx, cfg::Binding &bind,
                         // refers to another in its bounds become OK, which is
                         // not ideal. Maybe that check belongs in CFG
                         // construction instead?
+                        //
+                        // Update this to check for being inside of
+                        // <static-init> on the class that is being defined
                         if (data->isTypeMember()) {
                             checkFullyDefined = false;
                         }
