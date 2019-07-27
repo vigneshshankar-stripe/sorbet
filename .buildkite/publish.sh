@@ -1,9 +1,6 @@
 #!/bin/bash
 
 set -euo pipefail
-if [ "schedule" == "${BUILDKITE_SOURCE}" ]; then
-  exit 0
-fi
 
 echo "--- setup"
 apt-get update
@@ -12,15 +9,26 @@ apt-get install -yy curl jq rubygems
 git config --global user.email "sorbet+bot@stripe.com"
 git config --global user.name "Sorbet build farm"
 
-dryrun="1"
-if [ "$BUILDKITE_BRANCH" == 'master' ]; then
-    dryrun=""
-fi
-
 git_commit_count=$(git rev-list --count HEAD)
 prefix="0.4"
 release_version="0.4.${git_commit_count}"
 long_release_version="${release_version}.$(git log --format=%cd-%h --date=format:%Y%m%d%H%M%S -1)"
+
+dryrun="1"
+changes=""
+if [ "schedule" == "${BUILDKITE_SOURCE}" ]; then
+  if [ "$BUILDKITE_BRANCH" == 'master' ]; then
+    # publish on scheduled builds of master
+    dryrun=""
+    last_released_version="$(curl -s https://rubygems.org/api/v1/gems/sorbet.json | jq '.["version"]' | rev | cut -d '.' -f 1 | cut -d "\"" -f 2 | rev)"
+    new_commits=$((git_commit_count - last_released_version)) # how many new commits are there in master
+    if [ "0" == "$new_commits" ]; then
+      # no new commits, don't actually do stuff
+      dryrun="1"
+    fi
+  fi
+fi
+
 
 echo "--- Dowloading artifacts"
 rm -rf release
