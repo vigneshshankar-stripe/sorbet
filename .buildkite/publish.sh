@@ -26,6 +26,7 @@ if [ "schedule" == "${BUILDKITE_SOURCE}" ]; then
       # no new commits, don't actually do stuff
       dryrun="1"
     fi
+    changes="$(git log -n ${new_commits} --pretty=format:" - %h %s by %an")"
   fi
 fi
 
@@ -134,7 +135,11 @@ while IFS='' read -r line; do files+=("$line"); done < <(find . -type f | sed 's
 release_notes="To use Sorbet add this line to your Gemfile:
 \`\`\`
 gem 'sorbet', '$prefix.$git_commit_count'
-\`\`\`"
+\`\`\`
+Changelog:
+
+$changes
+"
 if [ "$dryrun" = "" ]; then
     echo "$release_notes" | ../.buildkite/tools/gh-release.sh sorbet/sorbet "${long_release_version}" -- "${files[@]}"
 fi
