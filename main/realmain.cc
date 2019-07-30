@@ -314,6 +314,7 @@ int realmain(int argc, char *argv[]) {
     while (opts.waitForDebugger && !stopInDebugger()) {
         // spin
     }
+    // TODO check for magical "stripe" flag, if not set suppress double-definition error
     if (opts.stdoutHUPHack) {
         startHUPMonitor();
     }
