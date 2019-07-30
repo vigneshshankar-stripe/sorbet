@@ -183,7 +183,7 @@ cc_binary(
 
     srcs = [
         "ast.c",
-      "addr2line.c",
+        "addr2line.c",
         "main.c",
         "dmydln.c",
         "dmyext.c",
@@ -363,15 +363,20 @@ genrule(
     srcs = [
         ":miniruby_lib",
         "bin/miniruby",
+        "lib/erb.rb",
+        "tool/colorize.rb",
         "tool/generic_erb.rb",
+        "tool/vpath.rb",
         "template/prelude.c.tmpl",
         "prelude.rb",
     ],
     outs = [ "prelude.c" ],
     cmd = """
 $(location bin/miniruby) \
-    $(location tool/generic_erb.rb) \
+    -I $$(dirname $(location lib/erb.rb)) \
+    -I $$(dirname $(location tool/vpath.rb)) \
     -I $$(dirname $(location prelude.rb)) \
+    $(location tool/generic_erb.rb) \
     -o $@ \
     $(location template/prelude.c.tmpl) \
 """,
@@ -416,6 +421,8 @@ cc_binary(
         "enc/unicode.c",
         "enc/utf_8.c",
 
+        "addr2line.c",
+        "ast.c",
         "main.c",
         "dln.c",
         "localeinit.c",
@@ -473,6 +480,7 @@ cc_binary(
         "thread.c",
         "time.c",
         "transcode.c",
+        "transient_heap.c",
         "util.c",
         "variable.c",
         "version.c",
@@ -486,7 +494,6 @@ cc_binary(
         ":linux": [
             "missing/strlcpy.c",
             "missing/strlcat.c",
-            "addr2line.c",
         ],
         ":darwin": [],
     }) + glob([
@@ -495,6 +502,7 @@ cc_binary(
 
     deps = [
         ":miniruby_private_headers",
+        ":coroutine/amd64",
         ":ruby_headers",
         ":ruby_private_headers",
         ":enc",
@@ -534,6 +542,7 @@ genrule(
     srcs = [
         ":miniruby_lib",
         "bin/miniruby",
+        "tool/colorize.rb",
         "tool/generic_erb.rb",
         "tool/vpath.rb",
         "enc/make_encmake.rb",
@@ -742,6 +751,7 @@ cc_library(
         "-DHAVE_RB_RATIONAL_DEN",
         "-DHAVE_RB_ARRAY_CONST_PTR",
         "-DHAVE_RB_SYM2STR",
+        "'-DRUBY_BIGDECIMAL_VERSION=\"1.4.1\"'",
     ],
     deps = [ ":ruby_headers" ],
     linkstatic = 1,
